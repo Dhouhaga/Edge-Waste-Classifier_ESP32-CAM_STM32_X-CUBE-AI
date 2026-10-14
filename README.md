@@ -26,15 +26,30 @@ Validation was run on 758 held-out images using the quantized model with the sam
 
 ## System Architecture
 
-```
- ESP32-CAM (OV2640)                 NUCLEO-H753ZI                   PC
- ┌──────────────────┐   UART      ┌──────────────────────┐  USB VCP ┌──────────────┐
- │ Capture 96×96    │ ─────────►  │ Request frame ("TP") │ ───────► │ view_pic.py  │
- │ RGB565 frame     │  framed     │ Verify checksum      │          │ Save frames  │
- │ Send on request  │  + checksum │ Quantize to int8     │          └──────────────┘
- └──────────────────┘             │ X-CUBE-AI inference  │
-                                  │ Print label + latency│
-                                  └──────────────────────┘
+```mermaid
+flowchart LR
+    subgraph CAM["ESP32-CAM (OV2640)"]
+        A1["Capture 96×96<br/>RGB565 frame"]
+        A2["Send on request"]
+        A1 --> A2
+    end
+
+    subgraph MCU["NUCLEO-H753ZI (STM32H753ZI)"]
+        B1["Request frame ('TP')"]
+        B2["Verify checksum"]
+        B3["Quantize to int8"]
+        B4["X-CUBE-AI inference"]
+        B5["Print label + latency"]
+        B1 --> B2 --> B3 --> B4 --> B5
+    end
+
+    subgraph PC["PC"]
+        C1["view_pic.py<br/>Save frames"]
+    end
+
+    A2 -- "UART<br/>framed + checksum" --> B2
+    B1 -- "UART 'TP' command" --> A2
+    B5 -- "USB VCP" --> C1
 ```
 
 1. The STM32 sends a `TP` command to the ESP32-CAM.
