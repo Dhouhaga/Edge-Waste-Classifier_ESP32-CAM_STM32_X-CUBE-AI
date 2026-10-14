@@ -28,6 +28,8 @@ Validation was run on 758 held-out images using the quantized model with the sam
 
 ```mermaid
 flowchart LR
+    CAM["ESP32-CAM (OV2640)<br/>Capture 96×96 RGB565 frame"]
+
     subgraph MCU["NUCLEO-H753ZI (STM32H753ZI)"]
         direction TB
         M0["Request frame ('TP')"]
@@ -39,17 +41,11 @@ flowchart LR
         M0 --> M1 --> M2 --> M3 --> M4 --> M5
     end
 
-    subgraph CAM["ESP32-CAM (OV2640)"]
-        C1["Capture 96×96 RGB565 frame"]
-    end
+    PC["PC<br/>view_pic.py<br/>Save frames"]
 
-    subgraph PC["PC"]
-        P1["view_pic.py<br/>Save frames"]
-    end
-
-    M0 -- "1. TP command (UART)" --> C1
-    C1 -- "2. Framed frame + checksum (UART)" --> M1
-    M2 -- "3. Raw frame (USB VCP)" --> P1
+    M0 -- "1. TP command (UART)" --> CAM
+    CAM -- "2. Framed frame + checksum (UART)" --> M1
+    M2 -- "3. Raw frame (USB VCP)" --> PC
 ```
 
 1. The STM32 sends a `TP` command to the ESP32-CAM.
