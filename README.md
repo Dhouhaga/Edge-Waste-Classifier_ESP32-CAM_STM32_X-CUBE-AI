@@ -1,0 +1,1 @@
+# Edge-Waste-Classifier_ESP32-CAM_STM32_X-CUBE-AI
