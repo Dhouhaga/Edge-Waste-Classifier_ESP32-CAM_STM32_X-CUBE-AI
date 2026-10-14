@@ -1,1 +1,96 @@
 # Edge-Waste-Classifier_ESP32-CAM_STM32_X-CUBE-AI
+
+An end-to-end embedded vision system that captures an image, classifies household waste as **organic**, **paper**, or **plastic** entirely on-device, and streams the raw frame to a PC for logging and inspection.
+
+The model is a MobileNetV2 (α = 0.35, 96×96 input) trained in TensorFlow, quantized to **int8** (~630 KB TFLite), and deployed to an STM32H753ZI microcontroller on the **NUCLEO-H753ZI** board using **ST Edge AI** (X-CUBE-AI) code generation.
+
+## Highlights
+
+- **Fully on-device inference.** No cloud, no network dependency. Classification runs on the STM32 in a few hundred milliseconds.
+- **Small, fast, quantized model.** int8 weights and activations, fitting comfortably in MCU memory.
+- **Robust to low-cost camera quality.** Training data was augmented with a degradation pipeline that mimics OV2640 optics and sensor noise, so the model generalizes to real camera frames rather than clean web photos.
+- **Reliable data link.** Frames are sent over UART with a length header and checksum; corrupted frames are detected and dropped.
+
+## Results
+
+| Metric | Value |
+|---|---|
+| Overall validation accuracy (int8, degraded inputs) | **89.2%** |
+| Organic | 94.2% |
+| Paper | 94.3% |
+| Plastic | 73.1% |
+| Model size (int8 TFLite) | ~630 KB |
+| Input | 96 × 96 RGB |
+
+Validation was run on 758 held-out images using the quantized model with the same preprocessing used on the device.
+
+## System Architecture
+
+```
+ ESP32-CAM (OV2640)                 NUCLEO-H753ZI                   PC
+ ┌──────────────────┐   UART      ┌──────────────────────┐  USB VCP ┌──────────────┐
+ │ Capture 96×96    │ ─────────►  │ Request frame ("TP") │ ───────► │ view_pic.py  │
+ │ RGB565 frame     │  framed     │ Verify checksum      │          │ Save frames  │
+ │ Send on request  │  + checksum │ Quantize to int8     │          └──────────────┘
+ └──────────────────┘             │ X-CUBE-AI inference  │
+                                  │ Print label + latency│
+                                  └──────────────────────┘
+```
+
+1. The STM32 sends a `TP` command to the ESP32-CAM.
+2. The ESP32-CAM captures a fresh RGB565 frame and returns it with a `0xAA 0x55` header, length field, and 32-bit checksum.
+3. The STM32 validates the frame, converts RGB565 to the model's int8 input format, and runs inference.
+4. The predicted class and inference time are printed over the debug UART. The raw frame is forwarded to the PC.
+5. `view_pic.py` reassembles the stream, validates each frame, and saves it as an upscaled JPEG.
+
+## Repository Contents
+
+| File | Description |
+|---|---|
+| `training_notebook.ipynb` | Dataset preparation, augmentation, MobileNetV2 training, int8 quantization, and on-device-compatible validation |
+| `send_pic.ino` | ESP32-CAM firmware: camera setup, frame packetization, and UART transmission |
+| `main.c` | STM32 application entry, UART frame request and checksum verification (CubeMX-generated with user sections) |
+| `app_x-cube-ai.c` | Inference wrapper: RGB565 → int8 preprocessing, network execution, and class decoding |
+| `view_pic.py` | PC-side receiver that parses the stream and saves captured frames |
+
+The X-CUBE-AI generated network sources (`network.c`, `network_data.c`) are produced by ST Edge AI from the trained `.tflite` model and are not included in the listing above.
+
+## Getting Started
+
+### 1. Train and export the model
+Open `training_notebook.ipynb` in Google Colab, add your Kaggle API key, and run all cells. The notebook downloads the dataset, trains, quantizes, and exports `trash_int8.tflite` plus `model_meta.json`.
+
+### 2. Generate the STM32 network
+Import `trash_int8.tflite` into ST Edge AI (X-CUBE-AI) in STM32CubeIDE, select the NUCLEO-H753ZI board (STM32H753ZI) as the target, and generate the C package. Replace the generated files in the project and keep the `app_x-cube-ai.c` integration.
+
+### 3. Flash the ESP32-CAM
+Upload `send_pic.ino` to an AI Thinker ESP32-CAM. Connect its UART2 TX/RX (GPIO 15/14) to the STM32 UART with a common ground.
+
+### 4. Flash the STM32
+Build and flash the project from STM32CubeIDE.
+
+### 5. Capture and view frames on the PC
+```bash
+pip install pyserial pillow
+python view_pic.py
+```
+Set `PORT` in `view_pic.py` to your board's virtual COM port. Captured frames are saved to `captures/`.
+
+## Configuration
+
+| Parameter | Location | Purpose |
+|---|---|---|
+| `BAUD` | `send_pic.ino` | Link speed between ESP32-CAM and STM32 (must match the STM32 UART) |
+| `PORT`, `BAUD` | `view_pic.py` | PC serial port and speed |
+| `IMG_MAX` | `main.c` | Maximum accepted frame size |
+
+## Future Work
+
+- Expand the dataset with real captures from the target camera and mounting position
+- Improve plastic recall, the weakest class (73.1%), through targeted data collection
+- Add a live confidence threshold and an "unknown" class for out-of-distribution items
+
+## Acknowledgements
+
+- Dataset: [Garbage Classification](https://www.kaggle.com/datasets/mostafaabla/garbage-classification) (Kaggle)
+- Model deployment: ST Edge AI / X-CUBE-AI
