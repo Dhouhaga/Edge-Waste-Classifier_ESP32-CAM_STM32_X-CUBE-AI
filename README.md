@@ -26,9 +26,6 @@ Validation was run on 758 held-out images using the quantized model with the sam
 
 ## Demo
 
-<img width="4624" height="3472" alt="circuit" src="https://github.com/user-attachments/assets/e9550dab-f55a-4bd4-8123-a4f6b202ce2a" />
-<br>
-<br>
 https://github.com/user-attachments/assets/0ceb4b4c-5e4d-40c3-858b-b2a34cf9e6d5
 
 
@@ -64,7 +61,7 @@ flowchart LR
 5. `view_pic.py` reassembles the stream, validates each frame, and saves it as an upscaled JPEG.
 
 ## Wiring
-
+<img width="2312" height="1736" alt="circuit" src="https://github.com/user-attachments/assets/e9550dab-f55a-4bd4-8123-a4f6b202ce2a" />
 The ESP32-CAM and the NUCLEO-H753ZI communicate over UART at 115200 baud. The ESP32-CAM is powered from its own USB supply, so no 5V wire is needed between the boards.
 
 | ESP32-CAM | Signal | NUCLEO-H753ZI | Signal | Notes |
