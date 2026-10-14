@@ -26,7 +26,9 @@ Validation was run on 758 held-out images using the quantized model with the sam
 
 ## Demo
 
-https://github.com/user-attachments/assets/0ceb4b4c-5e4d-40c3-858b-b2a34cf9e6d5
+
+https://github.com/user-attachments/assets/cb6f8953-b254-4b68-843e-7fb5ec1bc4bc
+
 
 
 
